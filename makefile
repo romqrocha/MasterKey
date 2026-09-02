@@ -10,5 +10,5 @@ T: .
 	$(CC) $(CFLAGS) -o $(TARGET) $(OBJECT)
 	-del /Q $(OBJECT) 2>NUL
 
-main.o: main.c
-	$(CC) $(CFLAGS) -c main.c -o $(OBJECT)
+main.o: src/main.c
+	$(CC) $(CFLAGS) -c src/main.c -o $(OBJECT)

@@ -40,6 +40,10 @@ char *inputLine(const char *prompt, char *buffer, int charLimit) {
     return buffer;
 }
 
+void setup() {
+    
+}
+
 int testKey(char *key) {
     return key[0] == '\0';
 }
