@@ -2,11 +2,10 @@
 #define CRYPTO_H
 
 #ifdef _WIN32
-    #include <bcrypt.h>
+    #include <windows.h>
 #endif
 
-#define MAX_STR_LEN 128
-
-// int encrypt(const char *fileName, const char *password, const unsigned char *)
+int encryptText(char *pw, char *text, BYTE *ciphertxt, ULONG *ciphertxtLen);
+int decryptText(char *pw, BYTE *ciphertxt, ULONG ciphertxtLen, char *text);
 
 #endif

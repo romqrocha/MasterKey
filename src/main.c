@@ -5,6 +5,9 @@
     #include <conio.h>
 #endif
 
+#include "crypto.h"
+#include "io.h"
+
 #define ESC_KEY '\x1B'
 
 void outputIntro() {
@@ -41,7 +44,10 @@ char *inputLine(const char *prompt, char *buffer, int charLimit) {
 }
 
 void setup() {
-    
+    // printf("Writing to test.txt:\n");
+    // write("test.txt");
+    // printf("Reading from test.txt:\n");
+    // read("test.txt");
 }
 
 int testKey(char *key) {
@@ -105,6 +111,8 @@ void whileLocked() {
 
 int main() {
     outputIntro();
+
+    setup();
 
     whileLocked();
     
