@@ -110,11 +110,11 @@ void whileLocked() {
 }
 
 int main() {
-    outputIntro();
+    // outputIntro();
 
     setup();
 
-    whileLocked();
+    // whileLocked();
     
     return 0;
 }
