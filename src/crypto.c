@@ -12,7 +12,7 @@
 
 #define SALT_FILE "salt.bin"
 #define SALT_LEN 8
-#define KEY_LEN 32
+#define KEY_LEN 64
 #define NUM_ITERATIONS 20000
 
 NTSTATUS genRandom(BYTE *buffer, ULONG bufferLen) {
@@ -36,7 +36,7 @@ NTSTATUS getSalt(BYTE *salt, int forceNewSalt) {
 
     // first check if salt already exists
     if (!forceNewSalt) {
-        int exists = read(SALT_FILE, salt, SALT_LEN);
+        int exists = mk_read(SALT_FILE, salt, SALT_LEN);
         printf("Reading salt file (Exists: %s)", exists ? "Y" : "N");
         forceNewSalt = exists;
     }
@@ -49,7 +49,7 @@ NTSTATUS getSalt(BYTE *salt, int forceNewSalt) {
             return status;
         }
 
-        int success = write(salt, SALT_LEN, SALT_FILE);
+        int success = mk_write(salt, SALT_LEN, SALT_FILE);
         printf("Writing salt file (Success: %s)", success ? "Y" : "N");
         if (!success) {
             free(salt);
@@ -65,11 +65,13 @@ NTSTATUS getIvLen(BCRYPT_HANDLE hAlg, ULONG *ivLen) {
     return BCryptGetProperty(hAlg, BCRYPT_BLOCK_LENGTH, (PUCHAR)ivLen, sizeof(*ivLen), &_, 0);
 }
 
-NTSTATUS deriveKey(BYTE *pw, ULONG pwLen, BYTE *salt, ULONG saltLen, const ULONG iterations, BYTE *derivedKey) {
+NTSTATUS deriveKey(BYTE *pw, ULONG pwLen, BYTE *salt, ULONG saltLen, 
+    const ULONG iterations, BYTE *derivedKey, ULONG derivedKeyLen) 
+{
     BCRYPT_ALG_HANDLE hAlg = NULL;
     NTSTATUS status = BCryptOpenAlgorithmProvider(&hAlg, BCRYPT_SHA256_ALGORITHM, NULL, BCRYPT_ALG_HANDLE_HMAC_FLAG);
     if (status == NO_ERROR) {
-        status = BCryptDeriveKeyPBKDF2(hAlg, pw, pwLen, salt, saltLen, iterations, derivedKey, KEY_LEN, 0);
+        status = BCryptDeriveKeyPBKDF2(hAlg, pw, pwLen, salt, saltLen, iterations, derivedKey, derivedKeyLen, 0);
     }
     if (hAlg) {
         BCryptCloseAlgorithmProvider(hAlg, 0);
@@ -237,7 +239,7 @@ NTSTATUS encrypt(BYTE *pw, ULONG pwLen, BYTE *plaintxt, ULONG plaintxtLen,
             break;
         }
 
-        status = deriveKey(pw, pwLen, salt, SALT_LEN, NUM_ITERATIONS, key);
+        status = deriveKey(pw, pwLen, salt, SALT_LEN, NUM_ITERATIONS, key, KEY_LEN);
         if (status != NO_ERROR) {
             break;
         }
@@ -267,7 +269,7 @@ NTSTATUS decrypt(BYTE *pw, ULONG pwLen, BYTE *ciphertxt, ULONG ciphertxtLen,
             break;
         }
 
-        status = deriveKey(pw, pwLen, salt, SALT_LEN, NUM_ITERATIONS, key);
+        status = deriveKey(pw, pwLen, salt, SALT_LEN, NUM_ITERATIONS, key, KEY_LEN);
         if (status != NO_ERROR) {
             break;
         }

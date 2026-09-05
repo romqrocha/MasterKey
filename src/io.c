@@ -3,7 +3,15 @@
 #include <string.h>
 #include <windows.h>
 
+#ifdef WIN32
+    #include <io.h>
+    #define F_OK 0
+    #define access _access
+#endif
+
 #define DIR_PATH "./data"
+#define SUCCESS 1
+#define FAIL 0
 
 char *getFilePath(const char *fileName) {
     int filePathLen = strlen(DIR_PATH) + strlen(fileName) + 2;
@@ -12,14 +20,14 @@ char *getFilePath(const char *fileName) {
     return filePath;
 }
 
-int read(const char *fileName, BYTE *data, ULONG dataLen) {
+int mk_read(const char *fileName, BYTE *data, ULONG dataLen) {
     // open file
     char *filePath = getFilePath(fileName);
     FILE *file = fopen(filePath, "r");
     if (!file) {
         // Error opening file
         free(filePath);
-        return 0;
+        return FAIL;
     }
 
     // read from file
@@ -28,17 +36,17 @@ int read(const char *fileName, BYTE *data, ULONG dataLen) {
     // close file
     fclose(file);
     free(filePath);
-    return 1;
+    return SUCCESS;
 }
 
-int write(BYTE *data, ULONG dataLen, const char *fileName) {
+int mk_write(BYTE *data, ULONG dataLen, const char *fileName) {
     // open file
     char *filePath = getFilePath(fileName);
     FILE *file = fopen(filePath, "w");
     if (!file) {
         perror("Error opening file");
         free(filePath);
-        return 0;
+        return FAIL;
     }
 
     // write to file
@@ -47,5 +55,17 @@ int write(BYTE *data, ULONG dataLen, const char *fileName) {
     // close file
     fclose(file);
     free(filePath);
-    return 1;
+    return SUCCESS;
+}
+
+int mk_exists(const char *fileName) {
+    int exists = 0;
+    char *filePath = getFilePath(fileName);
+
+    if (access(filePath, F_OK) == 0) {
+        exists = 1;
+    }
+
+    free(filePath);
+    return exists;
 }

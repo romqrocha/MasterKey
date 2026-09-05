@@ -1,3 +1,4 @@
+<Email>\n
 <Password>\n
 <OAuthProvider>\n
 <Key>\n

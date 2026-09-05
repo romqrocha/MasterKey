@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS = -Wall
 TARGET = MasterKey.exe
-OBJECTS = main.o io.o crypto.o
+OBJECTS = main.o io.o crypto.o account.o password.o
 LDLIBS = -lbcrypt
 
 T: $(TARGET)
@@ -14,7 +14,7 @@ build: $(TARGET)
 $(TARGET): $(OBJECTS)
 	$(CC) $(CFLAGS) -o $(TARGET) $(OBJECTS) $(LDLIBS)
 
-main.o: src/main.c src/crypto.h src/io.h
+main.o: src/main.c src/crypto.h src/io.h src/account.h src/password.h
 	$(CC) $(CFLAGS) -c src/main.c -o main.o
 
 io.o: src/io.c src/io.h
@@ -22,3 +22,9 @@ io.o: src/io.c src/io.h
 
 crypto.o: src/crypto.c src/crypto.h src/io.h
 	$(CC) $(CFLAGS) -c src/crypto.c -o crypto.o
+
+account.o: src/account.c src/account.h
+	$(CC) $(CFLAGS) -c src/account.c -o account.o
+
+password.o: src/password.c src/password.h src/crypto.h src/io.h
+	$(CC) $(CFLAGS) -c src/password.c -o password.o
