@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "account.h"
+#include "crypto.h"
 
 size_t getSerializedLength(Account *account) {
     size_t totalLen = 0;
@@ -146,5 +147,14 @@ void destroyRecursively(AccountKVP *kvp) {
 void destroy(Account *account) {
     destroyRecursively(account->additionalInfo);
 
+    mk_clearMemory(account->password, ACCOUNT_MAX_PW_LEN);
+
     free(account);
+}
+
+void getAccountFileName(Account *account, char buffer[ACCOUNT_MAX_NAME_LEN + 4]) {
+    const char extension[] = ".bin";
+    int accountNameLen = strlen(account->name);
+    memcpy(buffer, account->name, accountNameLen);
+    memcpy(buffer + accountNameLen, extension, strlen(extension) + 1); // copy the \0
 }

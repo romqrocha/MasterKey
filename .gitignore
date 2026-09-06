@@ -1,5 +1,6 @@
 # Folders
 /data/*
+/.vscode
 
 # Prerequisites
 *.d

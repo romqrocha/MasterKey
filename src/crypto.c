@@ -15,6 +15,10 @@
 #define KEY_LEN 64
 #define NUM_ITERATIONS 20000
 
+void mk_clearMemory(void *pointer, size_t bytes) {
+    SecureZeroMemory(pointer, bytes);
+}
+
 NTSTATUS genRandom(BYTE *buffer, ULONG bufferLen) {
     BCRYPT_ALG_HANDLE hAlg;
     NTSTATUS status = BCryptOpenAlgorithmProvider(&hAlg, BCRYPT_RNG_ALGORITHM, NULL, 0);
@@ -80,7 +84,7 @@ NTSTATUS deriveKey(BYTE *pw, ULONG pwLen, BYTE *salt, ULONG saltLen,
 }
 
 NTSTATUS doEncrypt(BYTE *key, ULONG keyLen, BYTE *plaintxt, ULONG plaintxtLen, 
-    BYTE *encryptedData, ULONG *encryptedDataLen)
+    BYTE **encryptedData, ULONG *encryptedDataLen)
 {
     NTSTATUS status = NTE_FAIL;
     BCRYPT_ALG_HANDLE hAlg = NULL;
@@ -123,20 +127,22 @@ NTSTATUS doEncrypt(BYTE *key, ULONG keyLen, BYTE *plaintxt, ULONG plaintxtLen,
         }
         memcpy(ivCopy, iv, ivLen);
 
-        BYTE *ciphertxt = encryptedData + ivLen;
         ULONG ciphertxtLen = 0;
         status = BCryptEncrypt(hKey, plaintxt, plaintxtLen, NULL, ivCopy, ivLen, NULL, 0, &ciphertxtLen, BCRYPT_BLOCK_PADDING);
         if (status != NO_ERROR) {
             break;
         }
 
-        encryptedData = (BYTE *)malloc(ivLen + ciphertxtLen);
-        if (encryptedData == NULL) {
+        *encryptedDataLen = ivLen + ciphertxtLen;
+
+        *encryptedData = (BYTE *)malloc(*encryptedDataLen);
+        if (*encryptedData == NULL) {
             status = NTE_NO_MEMORY;
             break;
         }
-        memcpy(iv, encryptedData, ivLen);
+        memcpy(*encryptedData, iv, ivLen);
         
+        BYTE *ciphertxt = *encryptedData + ivLen;
         ULONG _ = 0;
         status = BCryptEncrypt(hKey, plaintxt, plaintxtLen, NULL, ivCopy, ivLen, ciphertxt, ciphertxtLen, &_, BCRYPT_BLOCK_PADDING);
     } while (0);
@@ -158,7 +164,7 @@ NTSTATUS doEncrypt(BYTE *key, ULONG keyLen, BYTE *plaintxt, ULONG plaintxtLen,
 
 NTSTATUS doDecrypt(BYTE *key, ULONG keyLen, 
     BYTE *encryptedData, ULONG encryptedDataLen, 
-    BYTE *plaintxt, ULONG *plaintxtLen)
+    BYTE **plaintxt, ULONG *plaintxtLen)
 {
     NTSTATUS status = NTE_FAIL;
     BCRYPT_ALG_HANDLE hAlg = NULL;
@@ -201,14 +207,14 @@ NTSTATUS doDecrypt(BYTE *key, ULONG keyLen,
         if (status != NO_ERROR) {
             break;
         }
-        plaintxt = (BYTE *)malloc(*plaintxtLen);
-        if (plaintxt == NULL) {
+        *plaintxt = (BYTE *)malloc(*plaintxtLen);
+        if (*plaintxt == NULL) {
             status = NTE_NO_MEMORY;
             break;
         }
         
         ULONG _ = 0;
-        status = BCryptDecrypt(hKey, ciphertxt, ciphertxtLen, NULL, iv, ivLen, plaintxt, *plaintxtLen, &_, BCRYPT_BLOCK_PADDING);
+        status = BCryptDecrypt(hKey, ciphertxt, ciphertxtLen, NULL, iv, ivLen, *plaintxt, *plaintxtLen, &_, BCRYPT_BLOCK_PADDING);
     } while (0);
 
     if (hKey) {
@@ -224,7 +230,7 @@ NTSTATUS doDecrypt(BYTE *key, ULONG keyLen,
 }
 
 NTSTATUS encrypt(BYTE *pw, ULONG pwLen, BYTE *plaintxt, ULONG plaintxtLen, 
-    BYTE *encryptedData, ULONG *encryptedDataLen) 
+    BYTE **encryptedData, ULONG *encryptedDataLen) 
 {
     NTSTATUS status = NTE_FAIL;
     BYTE *salt = NULL;
@@ -246,14 +252,14 @@ NTSTATUS encrypt(BYTE *pw, ULONG pwLen, BYTE *plaintxt, ULONG plaintxtLen,
 
         status = doEncrypt(key, KEY_LEN, plaintxt, plaintxtLen, encryptedData, encryptedDataLen);
     } while (0);
-    SecureZeroMemory(key, KEY_LEN);
+    mk_clearMemory(key, KEY_LEN);
     free(key);
     free(salt);
     return status;
 }
 
 NTSTATUS decrypt(BYTE *pw, ULONG pwLen, BYTE *ciphertxt, ULONG ciphertxtLen, 
-    BYTE *plaintxt, ULONG *plaintxtLen) 
+    BYTE **plaintxt, ULONG *plaintxtLen) 
 {
     NTSTATUS status = NTE_FAIL;
     BYTE *salt = NULL;
@@ -279,13 +285,13 @@ NTSTATUS decrypt(BYTE *pw, ULONG pwLen, BYTE *ciphertxt, ULONG ciphertxtLen,
             break;
         }
     } while (0);
-    SecureZeroMemory(key, KEY_LEN);
+    mk_clearMemory(key, KEY_LEN);
     free(key);
     free(salt);
     return status;
 }
 
-int encryptText(char *pw, char *text, BYTE *ciphertxt, ULONG *ciphertxtLen) {
+int encryptText(char *pw, char *text, BYTE **ciphertxt, ULONG *ciphertxtLen) {
     NTSTATUS status = encrypt((BYTE *)pw, (ULONG)(strlen(pw) + 1), 
         (BYTE *)text, (ULONG)(strlen(text) + 1), ciphertxt, ciphertxtLen
     );
@@ -293,14 +299,11 @@ int encryptText(char *pw, char *text, BYTE *ciphertxt, ULONG *ciphertxtLen) {
     return status == NO_ERROR;
 }
 
-int decryptText(char *pw, BYTE *ciphertxt, ULONG ciphertxtLen, char *text) {
+int decryptText(char *pw, BYTE *ciphertxt, ULONG ciphertxtLen, char **text) {
     ULONG _ = 0;
     NTSTATUS status = decrypt((BYTE *) pw, (ULONG)(strlen(pw) + 1),
-        ciphertxt, ciphertxtLen, (BYTE *)text, &_
+        ciphertxt, ciphertxtLen, (BYTE **)text, &_
     );
     printf("Text decrypted (Status: %ld)\n", status);
     return status == NO_ERROR;
 }
-
-
-

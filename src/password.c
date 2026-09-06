@@ -33,7 +33,7 @@ int setPassword(char *pw) {
             break;
         }
 
-        status = deriveKey((BYTE *)pw, strlen(pw), saltAndKey, SALT_LEN, ITERATIONS, saltAndKey + SALT_LEN, KEY_LEN);
+        status = deriveKey((BYTE *)pw, strlen(pw) + 1, saltAndKey, SALT_LEN, ITERATIONS, saltAndKey + SALT_LEN, KEY_LEN);
         if (status != NO_ERROR) {
             break;
         }
@@ -71,7 +71,7 @@ int testPassword(char *pw) {
         }
         memcpy(saltAndKey, fileContents, SALT_LEN);
 
-        status = deriveKey((BYTE *)pw, strlen(pw), saltAndKey, SALT_LEN, ITERATIONS, saltAndKey + SALT_LEN, KEY_LEN);
+        status = deriveKey((BYTE *)pw, strlen(pw) + 1, saltAndKey, SALT_LEN, ITERATIONS, saltAndKey + SALT_LEN, KEY_LEN);
         if (status != NO_ERROR) {
             break;
         }

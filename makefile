@@ -1,8 +1,12 @@
 CC = gcc
-CFLAGS = -Wall
+DEBUGGABLE =
+CFLAGS = -Wall $(DEBUGGABLE)
 TARGET = MasterKey.exe
 OBJECTS = main.o io.o crypto.o account.o password.o
 LDLIBS = -lbcrypt
+
+D: $(TARGET)
+	gdb $(TARGET)
 
 T: $(TARGET)
 	-del /Q $(OBJECTS) 2>NUL
@@ -10,6 +14,9 @@ T: $(TARGET)
 
 build: $(TARGET)
 	-del /Q $(OBJECTS) 2>NUL
+
+clean:
+	-del /Q $(OBJECTS) $(TARGET) 2>NUL
 
 $(TARGET): $(OBJECTS)
 	$(CC) $(CFLAGS) -o $(TARGET) $(OBJECTS) $(LDLIBS)
@@ -23,7 +30,7 @@ io.o: src/io.c src/io.h
 crypto.o: src/crypto.c src/crypto.h src/io.h
 	$(CC) $(CFLAGS) -c src/crypto.c -o crypto.o
 
-account.o: src/account.c src/account.h
+account.o: src/account.c src/account.h src/crypto.h
 	$(CC) $(CFLAGS) -c src/account.c -o account.o
 
 password.o: src/password.c src/password.h src/crypto.h src/io.h
