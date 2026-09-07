@@ -5,6 +5,9 @@
 #define ACCOUNT_MAX_EMAIL_LEN 255
 #define ACCOUNT_MAX_PW_LEN 128
 #define ACCOUNT_MAX_KEY_LEN 128
+#define ACCOUNT_DIR "accounts/"
+#define ACCOUNT_FILE_EXT ".bin"
+#define ACCOUNT_MAX_FILENAME_LEN ACCOUNT_MAX_NAME_LEN + 9 + 4
 
 typedef struct AccountKVP {
     char key[ACCOUNT_MAX_KEY_LEN];
@@ -23,6 +26,6 @@ typedef struct Account {
 char *serialize(Account *account);
 Account *deserialize(char *serializedAccount, char *name);
 void destroy(Account *account);
-void getAccountFileName(Account *account, char buffer[ACCOUNT_MAX_NAME_LEN + 4]);
+void getAccountFileName(Account *account, char buffer[ACCOUNT_MAX_FILENAME_LEN]);
 
 #endif

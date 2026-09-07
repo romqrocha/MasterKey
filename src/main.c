@@ -1,87 +1,26 @@
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
 #ifdef _WIN32
     #include <conio.h>
+    #include "wincrypto.h"
+    #include "winterminal.h"
+#else
+    // ummm
 #endif
 
-#include "crypto.h"
 #include "io.h"
 #include "account.h"
 #include "password.h"
 
-#define ESC_KEY '\x1B'
-#define ENTER_KEY '\xD'
-#define BACKSPACE_KEY '\x8'
-#define HIDDEN_CHAR '#'
 #define OUT_OF_MEMORY "Out of memory. Please try again later.\n"
 #define MAX_USER_INPUT_LEN 32768
 
+typedef unsigned char byte;
+
 void outputIntro() {
     printf("Program initialized.\n");
-}
-
-char inputChoice(const char *prompt) {
-    printf(prompt);
-    
-    char choice;
-    // duuuude i wanted to code this for both windows and unix at first but man it's way too time consuming
-    #ifdef _WIN32
-        printf("Choose with your keyboard.\n");
-        choice = _getch();
-        printf("\n");
-    #else
-        printf("Enter your choice: ");
-        choice = fgetc(stdin);
-        while (fgetc(stdin) != '\n');
-    #endif
-    
-    return choice;
-}
-
-int inputLine(const char *prompt, char *buffer, int charLimit) {
-    int overLimit = 0;
-    
-    printf(prompt);
-
-    fgets(buffer, charLimit, stdin);
-    if (buffer[strlen(buffer) - 1] == '\n') {
-        // characters entered < limit
-        buffer[strlen(buffer) - 1] = '\0';
-    } else if (fgetc(stdin) != '\n') {
-        // characters entered > limit
-        while (fgetc(stdin) != '\n');
-        overLimit = 1;
-    }
-
-    return overLimit;
-}
-
-void inputLineSecretly(const char *prompt, char *buffer, int bufferLen) {
-    // backspace to delete, enter to submit
-    printf(prompt);
-    char ch;
-    int charCount = 0;
-    do {
-        ch = _getch();
-        if (ch == ESC_KEY) {
-            buffer[0] = ESC_KEY;
-            break;
-        } else if (ch == ENTER_KEY) {
-            ch = '\0';
-            buffer[charCount] = ch;
-        } else if (ch == BACKSPACE_KEY) {
-            if (charCount > 0) {
-                buffer[--charCount] = '\0';
-                printf("\b \b");
-            }
-        } else if (charCount < bufferLen) {
-            buffer[charCount++] = ch;
-            printf("%c", HIDDEN_CHAR);
-        }
-    } while (ch != '\0');
-
-    printf("\n");
 }
 
 int setup() {
@@ -107,12 +46,12 @@ int setup() {
     const char cancelledMsg[] = "Escape key pressed. Cancelling setup.\n";
     const char resetMsg[] = "Escape key pressed. Restarting process.\n";
 
-    do {
+    while (1) {
         // make sure to clear pw1 and pw2 between iterations
         mk_clearMemory(pw1, MASTER_PASSWORD_MAX_LEN);
         mk_clearMemory(pw2, MASTER_PASSWORD_MAX_LEN);
 
-        inputLineSecretly(prompt1, pw1, MASTER_PASSWORD_MAX_LEN - 1); // -1 for '/0'
+        inputLine(prompt1, pw1, MASTER_PASSWORD_MAX_LEN, "", 1);
         if (pw1[0] == ESC_KEY) {
             printf(cancelledMsg);
             exit(0);
@@ -122,7 +61,7 @@ int setup() {
             continue;
         }
 
-        inputLineSecretly(prompt2, pw2, MASTER_PASSWORD_MAX_LEN - 1);
+        inputLine(prompt2, pw2, MASTER_PASSWORD_MAX_LEN, "", 1);
         if (pw2[0] == ESC_KEY) {
             printf(resetMsg);
             continue;
@@ -133,7 +72,7 @@ int setup() {
         }
 
         break;
-    } while (1);
+    }
 
     printf("Passwords OK. This master password will be hashed and saved.\n");
     
@@ -149,7 +88,6 @@ int setup() {
     mk_clearMemory(pw2, MASTER_PASSWORD_MAX_LEN);
     free(pw1);
     free(pw2);
-
     if (sanityCheck) {
         printf("Setup complete.\n");
         return 1;
@@ -163,44 +101,62 @@ void whileViewing() {
     // show all account names by checking file names in data dir
 }
 
+/**
+ * Creates a new AccountKVP from terminal input.
+ * Allocates memory for the AccountKVP struct and returns the address.
+ */
 AccountKVP *addKvp() {
-    const char nameError[] = "(Name truncated to %s)\n";
-
-    char newKey[ACCOUNT_MAX_KEY_LEN]; 
-    if (inputLine("Key: ", newKey, ACCOUNT_MAX_KEY_LEN)) {
-        printf(nameError, newKey);
-    }
-
-    if (strlen(newKey) == 0) {
+    // remember to free later
+    AccountKVP *newKvp = calloc(1, sizeof(*newKvp));
+    if (!newKvp) {
+        printf(OUT_OF_MEMORY);
         return NULL;
     }
-
-    size_t bytes = MAX_USER_INPUT_LEN;
     char *newValue = NULL;
+    size_t valueLen = MAX_USER_INPUT_LEN;
     while (!newValue) {
-        if (bytes < ACCOUNT_MAX_KEY_LEN) {
+        // Reducing allocation size if needed
+        if (valueLen < ACCOUNT_MAX_KEY_LEN) {
             printf(OUT_OF_MEMORY);
+            free(newKvp);
             return NULL;
         }
-        newValue = malloc(bytes);
-        bytes /= 4;
+        newValue = malloc(valueLen);
+        if (!newValue) {
+            valueLen /= 4;
+        }
     }
 
-    if (inputLine("Value: ", newValue, MAX_USER_INPUT_LEN)) {
-        printf("Input exceeded %lld bytes. Value truncated.\n", bytes);
+    // input key
+    char newKey[ACCOUNT_MAX_KEY_LEN];
+    inputLineSimply("Key: ", newKey, ACCOUNT_MAX_KEY_LEN);
+    if (strlen(newKey) == 0 || newKey[0] == ESC_KEY) {
+        free(newValue);
+        free(newKvp);
+        return NULL;
     }
-    bytes = strlen(newValue) + 1;
-    
-    AccountKVP *newKvp = malloc(sizeof(*newKvp));
     memcpy(newKvp->key, newKey, strlen(newKey) + 1);
-    newKvp->value = malloc(bytes);
-    if (!newKvp->value) {
+
+    // input value
+    inputLineSimply("Value: ", newValue, valueLen);
+    if (newValue[0] == ESC_KEY) {
+        free(newValue);
+        free(newKvp);
+        return NULL;
+    }
+    valueLen = strlen(newValue) + 1;
+    
+    // reallocate newValue to minimum size
+    newKvp->value = malloc(valueLen);
+    if (newKvp->value == NULL) {
         printf(OUT_OF_MEMORY);
         free(newValue);
         free(newKvp);
         return NULL;
     }
-    memcpy(newKvp->value, newValue, bytes);
+    memcpy(newKvp->value, newValue, valueLen);
+    
+    // set next pointer to null
     newKvp->next = NULL;
 
     free(newValue);
@@ -209,43 +165,47 @@ AccountKVP *addKvp() {
 
 void whileAdding(char *pw) {
     // remember to free later
-    Account *account = NULL;
     unsigned char *ciphertxt = NULL;
-
-    account = calloc(1, sizeof(*account));
+    char *serializedAccount = NULL;
+    Account *account = account = calloc(1, sizeof(*account));
     if (!account) {
         printf(OUT_OF_MEMORY);
         return;
     }
 
-    const char nameError[] = "(Name truncated to %s)\n";
-    const char oauthMsg[] = "* Leave the Email field empty to specify an OAuth provider instead.\n";
-    const char emailError[] = "Email addresses cannot be longer than 254 characters. Please try again.\n";
-    const char pwError[] = "Passwords cannot be longer than %d characters. Please try again.\n";
+    const char oauthMsg[] = " * Leave the Email field empty to specify an OAuth provider instead.\n";
     const char additionalInfoMsg[] = "Now you can specify additional account information, saved in the format \"<Key>: <Value>\".\n";
-    const char emptyKeyMsg[] = "When you are done, leave the Key field empty to exit.\n";
+    const char emptyKeyMsg[] = " * When you are done, press ESC to exit.\n";
     const char encryptionError[] = "An error occurred while encrypting the account information. Please try again later.\n";
     const char allDone[] = "All account information was saved successfully.\n";
+    const char cancelled[] = "ESC key pressed. Cancelling process.\n";
+    const char invalidName[] = "Invalid account name. Cancelling process.\n";
 
-    if (inputLine("Account Name: ", account->name, ACCOUNT_MAX_NAME_LEN)) {
-        printf(nameError, account->name);
+    inputLine("Account Name: ", account->name, ACCOUNT_MAX_NAME_LEN, DISALLOWED_CHARS, 0);
+    int charCount = strlen(account->name);
+    if (charCount == 0 || account->name[0] == ESC_KEY) {
+        free(account);
+        printf(cancelled);
+        return;
+    }
+    while(strchr(". ", account->name[--charCount]) != NULL) {
+        if (charCount == 0) {
+            free(account);
+            printf(invalidName);
+            return;
+        }
+        account->name[charCount] = '\0';
     }
 
     // get account email or leave empty for oauth
     printf(oauthMsg);
-    while (inputLine("Email: ", account->email, ACCOUNT_MAX_EMAIL_LEN)) {
-        printf(emailError);
-    }
+    inputLineSimply("Email: ", account->email, ACCOUNT_MAX_EMAIL_LEN);
 
-    if (strlen(account->email) == 0) {
+    if (strlen(account->email) == 0 || account->email[0] == ESC_KEY) {
         // no email/password, just oauth provider
-        if (inputLine("Name of OAuth Provider: ", account->oauthProvider, ACCOUNT_MAX_NAME_LEN)) {
-            printf(nameError, account->oauthProvider);
-        }
+        inputLineSimply("Name of OAuth Provider: ", account->oauthProvider, ACCOUNT_MAX_NAME_LEN);
     } else {
-        while (inputLine("Password: ", account->password, ACCOUNT_MAX_PW_LEN)) {
-            printf(pwError, ACCOUNT_MAX_PW_LEN);
-        }
+        inputLineSimply("Password: ", account->password, ACCOUNT_MAX_PW_LEN);
     }
 
     printf(additionalInfoMsg);
@@ -258,32 +218,33 @@ void whileAdding(char *pw) {
         additionalInfo = additionalInfo->next;
     }
 
-    char *serializedAccount = serialize(account);
-    char fileName[ACCOUNT_MAX_NAME_LEN + 4];
+    serializedAccount = serialize(account);
+    char fileName[ACCOUNT_MAX_FILENAME_LEN];
     getAccountFileName(account, fileName);
 
     unsigned long ciphertxtLen = 0;
-    int success = encryptText(pw, serializedAccount, &ciphertxt, &ciphertxtLen);
-    if (!success) {
+    if (!encryptText(pw, serializedAccount, &ciphertxt, &ciphertxtLen)) {
         printf(encryptionError);
     } else {
-        if (!mk_write((BYTE *)serializedAccount, strlen(serializedAccount), fileName)) {
+        if (!mk_write((byte *)serializedAccount, strlen(serializedAccount), fileName)) {
             printf(encryptionError);
         } else {
             printf(allDone);
         }
     }
 
-    destroy(account);
     free(ciphertxt);
+    free(serializedAccount);
+    destroy(account);
 }
 
 void whileSyncing() {
-
+    // maybe really cool peer-to-peer syncing in the future???
 }
 
 void whileUnlocked(char *pw) {
-    const char *options = "1. View accounts\n2. Add new account\n3. Sync\n";
+    const char options[] = "1. View accounts\n2. Add new account\n3. Sync\n";
+
     char choice;
     do {
         printf("Options:\n");
@@ -306,7 +267,8 @@ void whileUnlocked(char *pw) {
 }
 
 void whileLocked() {
-    char pw[MASTER_PASSWORD_MAX_LEN];
+    // remember to free later
+    char *pw = calloc(MASTER_PASSWORD_MAX_LEN, sizeof(*pw));
 
     const char prompt[] = "Enter the password: ";
     const char wrongPwError[] = "Incorrect password. Please try again.\n";
@@ -314,31 +276,32 @@ void whileLocked() {
     const char cancelled[] = "Escape key pressed. Exiting program.\n";
 
     while (1) {
-        inputLineSecretly(prompt, pw, MASTER_PASSWORD_MAX_LEN);
+        inputLine(prompt, pw, MASTER_PASSWORD_MAX_LEN, "", 1);
         if (pw[0] == ESC_KEY) {
             printf(cancelled);
-            mk_clearMemory(pw, MASTER_PASSWORD_MAX_LEN);
-            return;
+            break;
         }
 
         int authorized = testPassword(pw);
         if (!authorized) {
             printf(wrongPwError);
-            mk_clearMemory(pw, MASTER_PASSWORD_MAX_LEN);
         } else {
             printf(rightPw);
             whileUnlocked(pw);
         }
+        mk_clearMemory(pw, MASTER_PASSWORD_MAX_LEN);
     }
+
+    mk_clearMemory(pw, MASTER_PASSWORD_MAX_LEN);
+    free(pw);
 }
 
 int main() {
     outputIntro();
     
     int passwordExists = mk_exists(HASHED_PASSWORD_FILE);
-    if (!passwordExists) {
-        int success = setup();
-        if (!success) {
+    if (!passwordExists) { 
+        if (!setup()) {
             exit(1);
         }
     }

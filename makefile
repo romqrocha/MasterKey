@@ -1,8 +1,8 @@
 CC = gcc
-DEBUGGABLE =
+DEBUGGABLE = -ggdb3
 CFLAGS = -Wall $(DEBUGGABLE)
 TARGET = MasterKey.exe
-OBJECTS = main.o io.o crypto.o account.o password.o
+OBJECTS = main.o io.o wincrypto.o account.o password.o winterminal.o
 LDLIBS = -lbcrypt
 
 D: $(TARGET)
@@ -21,17 +21,20 @@ clean:
 $(TARGET): $(OBJECTS)
 	$(CC) $(CFLAGS) -o $(TARGET) $(OBJECTS) $(LDLIBS)
 
-main.o: src/main.c src/crypto.h src/io.h src/account.h src/password.h
+main.o: src/main.c src/wincrypto.h src/io.h src/account.h src/password.h src/winterminal.h
 	$(CC) $(CFLAGS) -c src/main.c -o main.o
 
 io.o: src/io.c src/io.h
 	$(CC) $(CFLAGS) -c src/io.c -o io.o
 
-crypto.o: src/crypto.c src/crypto.h src/io.h
-	$(CC) $(CFLAGS) -c src/crypto.c -o crypto.o
+wincrypto.o: src/wincrypto.c src/wincrypto.h src/password.h src/io.h
+	$(CC) $(CFLAGS) -c src/wincrypto.c -o wincrypto.o
 
-account.o: src/account.c src/account.h src/crypto.h
+account.o: src/account.c src/account.h src/password.h src/wincrypto.h
 	$(CC) $(CFLAGS) -c src/account.c -o account.o
 
-password.o: src/password.c src/password.h src/crypto.h src/io.h
+password.o: src/password.c src/password.h src/io.h src/wincrypto.h
 	$(CC) $(CFLAGS) -c src/password.c -o password.o
+
+winterminal.o: src/winterminal.c src/winterminal.h
+	$(CC) $(CFLAGS) -c src/winterminal.c -o winterminal.o
