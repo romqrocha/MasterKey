@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 
 #ifdef _WIN32
     #include <conio.h>
@@ -16,6 +17,8 @@
 
 #define OUT_OF_MEMORY "Out of memory. Please try again later.\n"
 #define MAX_USER_INPUT_LEN 32768
+#define MAX_VIEWABLE 9
+#define ASCII_TO_INT -48
 
 typedef unsigned char byte;
 
@@ -97,8 +100,148 @@ int setup() {
     }
 }
 
-void whileViewing() {
-    // show all account names by checking file names in data dir
+void strToUpper(char **str) {
+    int i = 0;
+    for (char c = (*str)[i]; c != '\0'; c = (*str)[++i]) {
+        (*str)[i] = (char)toupper((*str)[i]);
+    }
+}
+
+void whileViewing(char *fileName) {
+    printf("You want to view %s\n", fileName);
+}
+
+void whileBrowsing() {
+    // remember to free at the end
+    char **fileNames = NULL;
+    char **searchableNames = NULL;
+
+    size_t numOfAccounts = mk_countFilesInDir(ACCOUNT_DIR_FILES);
+    if (numOfAccounts == 0) {
+        printf("No accounts have been added yet.\n");
+        return;
+    }
+    
+    searchableNames = calloc(numOfAccounts, sizeof(*searchableNames));
+    if (!searchableNames) {
+        perror(OUT_OF_MEMORY);
+        goto cleanup;
+    }
+    for (int i = 0; i < numOfAccounts; i++) {
+        searchableNames[i] = malloc(ACCOUNT_MAX_NAME_LEN);
+        if (!searchableNames[i]) {
+            perror(OUT_OF_MEMORY);
+            goto cleanup;
+        }
+    }
+
+    fileNames = calloc(numOfAccounts, sizeof(*fileNames));
+    if (!fileNames) {
+        perror(OUT_OF_MEMORY);
+        goto cleanup;
+    }
+
+    void *currFile = NULL;
+    for (int i = 0; i < numOfAccounts; i++) {
+        fileNames[i] = mk_nextFileInDir(ACCOUNT_DIR_FILES, &currFile);
+        if (fileNames[i] == NULL) {
+            perror(OUT_OF_MEMORY);
+            goto cleanup;
+        } else if (currFile == NULL) {
+            perror("Unexpect null while iterating through account files.\n");
+            goto cleanup;
+        }
+        int searchableNameLen = strlen(fileNames[i]) - strlen(ACCOUNT_FILE_EXT);
+        memcpy(searchableNames[i], fileNames[i], searchableNameLen);
+        searchableNames[i][searchableNameLen] = '\0';
+        strToUpper(&(searchableNames[i]));
+    }
+
+    char filter[ACCOUNT_MAX_NAME_LEN] = "";
+    char filterToUpper[ACCOUNT_MAX_NAME_LEN] = "";
+    int filterLen = 0;
+    char *names[MAX_VIEWABLE];
+    int matchesFound = 0;
+    char curName[ACCOUNT_MAX_NAME_LEN];
+    int curNameLen = 0;
+    int keyPressed;
+    int savedIndex = 0;
+
+    while (1) {
+        matchesFound = 0;
+
+        // filter
+        for (int i = savedIndex; i < numOfAccounts && matchesFound < MAX_VIEWABLE; savedIndex = ++i) {
+            if (strstr(searchableNames[i], filterToUpper)) {
+                names[matchesFound++] = fileNames[i];
+            }
+        }
+
+        // print filtered options
+        for (int i = 0; i < matchesFound; i++) {
+            curNameLen = strlen(names[i]) - strlen(ACCOUNT_FILE_EXT) + 1;
+            memcpy(curName, names[i], curNameLen);
+            curName[curNameLen - 1] = '\0';
+
+            printf("%d. %s\n", i + 1, curName);
+        }
+        if (matchesFound == 0) {
+            printf("No matches found.\n");
+        }
+
+        // wait for user input
+        printf("Filter by name: %s", filter);
+        keyPressed = inputKey();
+        printf("\n");
+
+        // update terminal according to user input
+        if (keyPressed == ESC_KEY) {
+            savedIndex -= (MAX_VIEWABLE + matchesFound);
+            if (savedIndex < 0) {
+                break;
+            }
+        } else if (keyPressed == BACKSPACE_KEY) {
+            savedIndex = 0;
+
+            if (filterLen > 0) {
+                filterLen--;
+                filter[filterLen] = '\0';
+                filterToUpper[filterLen] = '\0';
+                printf("\b \b");
+            }
+        } else if (keyPressed == ENTER_KEY) {
+            if (savedIndex >= numOfAccounts) {
+                savedIndex -= matchesFound;
+            }
+        } else if (keyPressed >= '1' && keyPressed <= '9') {
+            savedIndex -= matchesFound;
+            
+            int keyAsInt = keyPressed + ASCII_TO_INT;
+            whileViewing(names[keyAsInt - 1]);
+        } else if (filterLen < ACCOUNT_MAX_NAME_LEN - 1) { // reserve 1 for '\0'
+            savedIndex = 0;
+
+            filter[filterLen] = (char)keyPressed;
+            filterToUpper[filterLen] = (char)toupper(keyPressed);
+            filterLen++;
+            filter[filterLen] = '\0';
+            filterToUpper[filterLen] = '\0';
+        }
+    }
+
+cleanup:
+    for (int i = 0; i < numOfAccounts; i++) {
+        if (fileNames) {
+            free(fileNames[i]);
+        }
+        if (searchableNames) {
+            free(searchableNames[i]);
+        }
+    }
+    free(fileNames);
+    free(searchableNames);
+
+    printf("\n");
 }
 
 /**
@@ -251,7 +394,7 @@ void whileUnlocked(char *pw) {
         choice = inputChoice(options);
         if (choice == '1') {
             printf("Viewing accounts...\n");
-            whileViewing();
+            whileBrowsing();
         } else if (choice == '2') {
             printf("Adding new account...\n");
             whileAdding(pw);

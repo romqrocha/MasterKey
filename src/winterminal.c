@@ -35,6 +35,11 @@ char inputChoice(const char *prompt)
     return choice;
 }
 
+int inputKey()
+{   
+    return _getch();
+}
+
 void inputLine(const char *prompt, char *buffer, int bufferLen, 
     char *disallowed, int isSecret) 
 {
@@ -53,7 +58,7 @@ void inputLine(const char *prompt, char *buffer, int bufferLen,
                 buffer[--charCount] = '\0';
                 printf("\b \b");
             }
-        }else if (ch == ENTER_KEY) {
+        } else if (ch == ENTER_KEY) {
             ch = '\0';
             buffer[charCount] = '\0';
         } else if (charCount < bufferLen - 1 && isAllowed(ch, disallowed)) { // reserve 1 for '\0'

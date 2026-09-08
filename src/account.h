@@ -6,6 +6,7 @@
 #define ACCOUNT_MAX_PW_LEN 128
 #define ACCOUNT_MAX_KEY_LEN 128
 #define ACCOUNT_DIR "accounts/"
+#define ACCOUNT_DIR_FILES "accounts/*"
 #define ACCOUNT_FILE_EXT ".bin"
 #define ACCOUNT_MAX_FILENAME_LEN ACCOUNT_MAX_NAME_LEN + 9 + 4
 
