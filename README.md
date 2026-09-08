@@ -1,2 +1,4 @@
 # MasterKey
-A fast, secure, and minimalistic password manager.
+A fast and secure CLI password manager.
+
+Still working on it :P
