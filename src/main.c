@@ -107,11 +107,42 @@ void strToUpper(char **str) {
     }
 }
 
-void whileViewing(char *fileName) {
-    printf("You want to view %s\n", fileName);
+void whileViewing(char *pw, char *fileName) {
+    // remember to free at the end
+    unsigned char *ciphertext = NULL;
+    char *plaintext = NULL;
+    char *filePath = NULL;
+    
+    int filePathLen = strlen(ACCOUNT_DIR) + strlen(fileName) + 1; // +1 for '\0'
+    filePath = malloc(filePathLen);
+    if (!filePath) {
+        perror(OUT_OF_MEMORY);
+        goto cleanup;
+    }
+    snprintf(filePath, filePathLen, "%s%s", ACCOUNT_DIR, fileName);
+
+    long fileLen;
+    ciphertext = mk_readAll(filePath, &fileLen);
+    if (!ciphertext) {
+        perror("Unable to open or allocate memory for that file.\n");
+        goto cleanup;
+    }
+
+    int success = decryptText(pw, ciphertext, fileLen, &plaintext);
+    if (!success) {
+        perror("Unable to decrypt text.\n");
+        goto cleanup;
+    }
+
+    printf(plaintext);
+
+cleanup:
+    free(filePath);
+    free(ciphertext);
+    free(plaintext);
 }
 
-void whileBrowsing() {
+void whileBrowsing(char *pw) {
     // remember to free at the end
     char **fileNames = NULL;
     char **searchableNames = NULL;
@@ -217,7 +248,7 @@ void whileBrowsing() {
             savedIndex -= matchesFound;
             
             int keyAsInt = keyPressed + ASCII_TO_INT;
-            whileViewing(names[keyAsInt - 1]);
+            whileViewing(pw, names[keyAsInt - 1]);
         } else if (filterLen < ACCOUNT_MAX_NAME_LEN - 1) { // reserve 1 for '\0'
             savedIndex = 0;
 
@@ -308,7 +339,7 @@ AccountKVP *addKvp() {
 
 void whileAdding(char *pw) {
     // remember to free later
-    unsigned char *ciphertxt = NULL;
+    byte *ciphertxt = NULL;
     char *serializedAccount = NULL;
     Account *account = account = calloc(1, sizeof(*account));
     if (!account) {
@@ -369,7 +400,7 @@ void whileAdding(char *pw) {
     if (!encryptText(pw, serializedAccount, &ciphertxt, &ciphertxtLen)) {
         printf(encryptionError);
     } else {
-        if (!mk_write((byte *)serializedAccount, strlen(serializedAccount), fileName)) {
+        if (!mk_write(ciphertxt, ciphertxtLen, fileName)) {
             printf(encryptionError);
         } else {
             printf(allDone);
@@ -394,7 +425,7 @@ void whileUnlocked(char *pw) {
         choice = inputChoice(options);
         if (choice == '1') {
             printf("Viewing accounts...\n");
-            whileBrowsing();
+            whileBrowsing(pw);
         } else if (choice == '2') {
             printf("Adding new account...\n");
             whileAdding(pw);

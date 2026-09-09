@@ -327,11 +327,15 @@ int encryptText(char *pw, char *text, BYTE **ciphertxt, ULONG *ciphertxtLen) {
     );
 
     if (status != NO_ERROR) {
-        printf("Error in encryptText() (%ld)", status);
+        printf("Error in encryptText() (%ld)\n", status);
     }
     return status == NO_ERROR;
 }
 
+/**
+ * Decrypts text data with a text password.
+ * Allocates memory and writes the address to <text>.
+ */
 int decryptText(char *pw, BYTE *ciphertxt, ULONG ciphertxtLen, char **text) {
     ULONG _ = 0;
     NTSTATUS status = decrypt((BYTE *) pw, (ULONG)(strlen(pw) + 1),
@@ -339,8 +343,8 @@ int decryptText(char *pw, BYTE *ciphertxt, ULONG ciphertxtLen, char **text) {
     );
 
     int success = status == NO_ERROR;
-    if (status != NO_ERROR) {
-        printf("Error in decryptText() (%ld)", status);
+    if (!success) {
+        printf("Error in decryptText() (%ld)\n", status);
     }
     return success;
 }

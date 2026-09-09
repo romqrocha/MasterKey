@@ -21,6 +21,17 @@
 #define FAIL 0
 
 /**
+ * Gets the number of bytes required to read a file.
+ */
+long getFileLength(FILE *fp) {
+    fseek(fp, 0, SEEK_END); 
+    long length = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+
+    return length;
+}
+
+/**
  * Appends the given file name to the path of the data directory.
  * Allocates memory for the file path and returns the address.
  */
@@ -69,7 +80,7 @@ int mk_read(const char *fileName, void *data, size_t dataLen) {
         return FAIL;
     }
 
-    FILE *file = fopen(filePath, "r");
+    FILE *file = fopen(filePath, "rb");
     if (!file) {
         free(filePath);
         return FAIL;
@@ -83,6 +94,38 @@ int mk_read(const char *fileName, void *data, size_t dataLen) {
 }
 
 /**
+ * Reads the text contents of an entire file.
+ * Writes the file length to fileLen.
+ * Allocates memory for the contents and returns the address.
+ */
+void *mk_readAll(const char *fileName, long *fileLen) {
+    // remember to free at the end
+    void *content = NULL;
+    char *filePath = getFilePath(fileName);
+    if (!filePath) {
+        return NULL;
+    }
+
+    FILE *file = fopen(filePath, "rb");
+    if (!file) {
+        free(filePath);
+        return NULL;
+    }
+
+    *fileLen = getFileLength(file);
+    content = malloc(*fileLen);
+    if (!content) {
+        return NULL;
+    }
+
+    fread(content, sizeof(char), *fileLen, file);
+
+    fclose(file);
+    free(filePath);
+    return content;
+}
+
+/**
  * Writes bytes from the start of a new file. Can overwrite another file.
  * File is assumed to be in the system's data directory.
  */
@@ -93,7 +136,7 @@ int mk_write(void *data, size_t dataLen, const char *fileName) {
         return FAIL;
     }
 
-    FILE *file = fopen(filePath, "w");
+    FILE *file = fopen(filePath, "wb");
     if (!file) {
         free(filePath);
         return FAIL;
