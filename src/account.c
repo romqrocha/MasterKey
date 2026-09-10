@@ -59,7 +59,8 @@ AccountKVP *deserializeKVP(char *buffer, unsigned long long *currIndex) {
 
     // deserialize key
     for (int i = 0; buffer[*currIndex] != '\0'; i++) {
-        if (buffer[(*currIndex)++] == '\n') {
+        if (buffer[*currIndex] == '\n') {
+            (*currIndex)++;
             break;
         } else {
             kvp->key[i] = buffer[(*currIndex)++];
@@ -85,7 +86,8 @@ AccountKVP *deserializeKVP(char *buffer, unsigned long long *currIndex) {
 
     // deserialize value
     for (unsigned long long i = 0; buffer[*currIndex] != '\0' ; i++) {
-        if (buffer[(*currIndex)++] == '\n') {
+        if (buffer[*currIndex] == '\n') {
+            (*currIndex)++;
             break;
         } else {
             kvp->value[i] = buffer[(*currIndex)++];
@@ -111,32 +113,26 @@ Account *deserialize(char *serializedAccount, char *name) {
 
     unsigned long long charCount = 0;
     
-    char email[ACCOUNT_MAX_EMAIL_LEN];
     int emailLen = 0;
     while (serializedAccount[charCount + emailLen] != '\n') {
         account->email[emailLen] = serializedAccount[charCount + emailLen];
         emailLen++;
     }
     charCount += emailLen + 1; // +1 for \n
-    memcpy(account->email, email, emailLen);
 
-    char pw[ACCOUNT_MAX_PW_LEN];
     int pwLen = 0;
     while (serializedAccount[charCount + pwLen] != '\n') {
         account->password[pwLen] = serializedAccount[charCount + pwLen];
         pwLen++;
     }
     charCount += pwLen + 1; // +1 for \n
-    memcpy(account->password, pw, pwLen);
 
-    char oauth[ACCOUNT_MAX_NAME_LEN];
     int oauthLen = 0;
     while (serializedAccount[charCount + oauthLen] != '\n') {
         account->oauthProvider[oauthLen] = serializedAccount[charCount + oauthLen];
         oauthLen++;
     }
     charCount += oauthLen + 1; // +1 for \n
-    memcpy(account->oauthProvider, oauth, oauthLen);
 
     AccountKVP *nextKVP = deserializeKVP(serializedAccount, &charCount);
     account->additionalInfo = nextKVP;

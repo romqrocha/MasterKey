@@ -337,15 +337,34 @@ int encryptText(char *pw, char *text, BYTE **ciphertxt, ULONG *ciphertxtLen) {
  * Allocates memory and writes the address to <text>.
  */
 int decryptText(char *pw, BYTE *ciphertxt, ULONG ciphertxtLen, char **text) {
-    ULONG _ = 0;
-    NTSTATUS status = decrypt((BYTE *) pw, (ULONG)(strlen(pw) + 1),
-        ciphertxt, ciphertxtLen, (BYTE **)text, &_
-    );
+    // remember to free later
+    char *string = NULL;
+    
+    NTSTATUS status = NTE_FAIL;
+    do {
+        ULONG plaintextLen = 0;
+        status = decrypt((BYTE *)pw, (ULONG)(strlen(pw) + 1), ciphertxt, ciphertxtLen, (BYTE **)text, &plaintextLen);
+        BREAK_IF_ERR(status);
 
+        string = malloc(plaintextLen + 1);
+        if (string == NULL) {
+            status = NTE_NO_MEMORY;
+        }
+        BREAK_IF_ERR(status);
+        
+        memcpy(string, *text, plaintextLen);
+        string[plaintextLen] = '\0';
+        free(*text);
+        *text = string;
+    } while (0);
+    
     int success = status == NO_ERROR;
     if (!success) {
+        free(*text);
+        free(string);
         printf("Error in decryptText() (%ld)\n", status);
     }
+
     return success;
 }
 

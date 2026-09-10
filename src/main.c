@@ -112,6 +112,7 @@ void whileViewing(char *pw, char *fileName) {
     unsigned char *ciphertext = NULL;
     char *plaintext = NULL;
     char *filePath = NULL;
+    Account *account = NULL;
     
     int filePathLen = strlen(ACCOUNT_DIR) + strlen(fileName) + 1; // +1 for '\0'
     filePath = malloc(filePathLen);
@@ -120,6 +121,9 @@ void whileViewing(char *pw, char *fileName) {
         goto cleanup;
     }
     snprintf(filePath, filePathLen, "%s%s", ACCOUNT_DIR, fileName);
+    
+    char accountName[ACCOUNT_MAX_NAME_LEN] = {0};
+    memcpy(accountName, fileName, strlen(fileName) - strlen(ACCOUNT_FILE_EXT));
 
     long fileLen;
     ciphertext = mk_readAll(filePath, &fileLen);
@@ -134,12 +138,32 @@ void whileViewing(char *pw, char *fileName) {
         goto cleanup;
     }
 
-    printf(plaintext);
+    account = deserialize(plaintext, accountName);
+    int line = 1;
+
+    printf(accountName);
+    printf("\n");
+
+    char *email = strlen(account->email) ? account->email : "N/A";
+    printf("%d | %s: %s\n", line++, "Email", email);
+
+    char *password = strlen(account->password) ? account->password : "N/A";
+    printf("%d | %s: %s\n", line++, "Password", password);
+
+    char *oauth = strlen(account->oauthProvider) ? account->oauthProvider : "N/A";
+    printf("%d | %s: %s\n", line++, "OAuth Provider", oauth);
+
+    AccountKVP *nextKvp = account->additionalInfo;
+    while (nextKvp) {
+        printf("%d | %s: %s\n", line++, nextKvp->key, nextKvp->value);
+        nextKvp = nextKvp->next;
+    }
 
 cleanup:
     free(filePath);
     free(ciphertext);
     free(plaintext);
+    destroy(account);
 }
 
 void whileBrowsing(char *pw) {
