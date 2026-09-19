@@ -91,7 +91,7 @@ int testPassword(char *pw) {
 
     int isMatching = 0;
     do {
-        if (!mk_read(HASHED_PASSWORD_FILE, fileContents, SALT_LEN + KEY_LEN)) {
+        if (mk_read(HASHED_PASSWORD_FILE, fileContents, SALT_LEN + KEY_LEN)) {
             printf("Unable to read %s. File may be missing.\n", HASHED_PASSWORD_FILE);
             break;
         }

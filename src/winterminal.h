@@ -8,6 +8,7 @@
 #define MAX_CHAR 127
 #define DISALLOWED_CHARS "<>:\"/\\|?*"
 
+void clearScreen();
 char inputChoice(const char *prompt);
 void inputLine(const char *prompt, char *buffer, int bufferLen, char *disallowed, int isSecret);
 void inputLineSimply(const char *prompt, char *buffer, int bufferLen);

@@ -10,6 +10,18 @@
 
 #include "winterminal.h"
 
+/**
+ * Clears the terminal screen.
+ */
+void clearScreen() {
+    printf("\033[2J"); // clear the screen
+    printf("\033[H"); // move cursor to the top left
+}
+
+/**
+ * Returns 1 if the character is not found in the disallowed characters string.
+ * Returns 0 otherwise.
+ */
 int isAllowed(int ch, char *disallowed) {
     int isAllowed = 1;
 

@@ -26,6 +26,10 @@ void outputIntro() {
     printf("Program initialized.\n");
 }
 
+void logError(int code) {
+    printf("/!\\ Error caught: %d\n", code);
+}
+
 int setup() {
     char *pw1 = calloc(MASTER_PASSWORD_MAX_LEN, sizeof(*pw1));
     char *pw2 = calloc(MASTER_PASSWORD_MAX_LEN, sizeof(*pw2));
@@ -125,10 +129,16 @@ void whileViewing(char *pw, char *fileName) {
     char accountName[ACCOUNT_MAX_NAME_LEN] = {0};
     memcpy(accountName, fileName, strlen(fileName) - strlen(ACCOUNT_FILE_EXT));
 
-    long fileLen;
-    ciphertext = mk_readAll(filePath, &fileLen);
+    long fileLen = mk_fileLength(filePath);
+    ciphertext = (unsigned char*)malloc(fileLen);
     if (!ciphertext) {
-        perror("Unable to open or allocate memory for that file.\n");
+        perror(OUT_OF_MEMORY);
+        goto cleanup;
+    }
+
+    int err = mk_read(filePath, ciphertext, fileLen);
+    if (err) {
+        logError(err);
         goto cleanup;
     }
 
@@ -167,6 +177,8 @@ cleanup:
 }
 
 void whileBrowsing(char *pw) {
+    int err = 0;
+
     // remember to free at the end
     char **fileNames = NULL;
     char **searchableNames = NULL;
@@ -174,6 +186,9 @@ void whileBrowsing(char *pw) {
     size_t numOfAccounts = mk_countFilesInDir(ACCOUNT_DIR_FILES);
     if (numOfAccounts == 0) {
         printf("No accounts have been added yet.\n");
+        return;
+    } else if (numOfAccounts < 0) {
+        logError(numOfAccounts);
         return;
     }
     
@@ -198,9 +213,9 @@ void whileBrowsing(char *pw) {
 
     void *currFile = NULL;
     for (int i = 0; i < numOfAccounts; i++) {
-        fileNames[i] = mk_nextFileInDir(ACCOUNT_DIR_FILES, &currFile);
+        fileNames[i] = mk_nextFileInDir(ACCOUNT_DIR_FILES, &currFile, &err);
         if (fileNames[i] == NULL) {
-            perror(OUT_OF_MEMORY);
+            logError(err);
             goto cleanup;
         } else if (currFile == NULL) {
             perror("Unexpect null while iterating through account files.\n");

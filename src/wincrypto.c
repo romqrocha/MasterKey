@@ -72,7 +72,7 @@ NTSTATUS getSalt(BYTE **salt, int forceNewSalt)
 
             status = mk_write(*salt, SALT_LEN, SALT_FILE) ? NO_ERROR : NTE_FAIL;
         } else {
-            status = mk_read(SALT_FILE, *salt, SALT_LEN) ? NO_ERROR : NTE_FAIL;
+            status = mk_read(SALT_FILE, *salt, SALT_LEN);
         }
     } while (0);
 
