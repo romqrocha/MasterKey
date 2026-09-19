@@ -228,7 +228,7 @@ char *mk_nextFileInDir(const char *dirName, void **currFile, int *err) {
 #endif
 
 cleanup:
-    if (err) {
+    if (*err) {
         if (currFile && *currFile) {
 #ifdef _WIN32
             FindClose(*currFile);
