@@ -272,7 +272,9 @@ void whileBrowsing(char *pw) {
             savedIndex -= matchesFound;
             
             int keyAsInt = keyPressed + ASCII_TO_INT;
-            whileViewing(pw, names[keyAsInt - 1]);
+            if (keyAsInt <= matchesFound) {
+                whileViewing(pw, names[keyAsInt - 1]);
+            }
         } else if (filterLen < ACCOUNT_MAX_NAME_LEN - 1) { // reserve 1 for '\0'
             savedIndex = 0;
 

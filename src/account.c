@@ -78,7 +78,7 @@ AccountKVP *deserializeKVP(char *buffer, unsigned long long *currIndex) {
     }
     valueLen++; // +1 for '\0'
 
-    kvp->value = (char *)malloc(valueLen);
+    kvp->value = (char *)calloc(valueLen, sizeof(char));
     if (kvp->value == NULL) {
         free(kvp);
         return NULL;
